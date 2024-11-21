@@ -733,12 +733,15 @@ class MixtralSparseMoeBlock(nn.Module):
 
         # One hot encode the selected experts to create an expert mask
         # this will be used to easily index which expert is going to be sollicitated
-        expert_mask = torch.nn.functional.one_hot(selected_experts, num_classes=self.num_experts).permute(2, 1, 0)
+        starting_device = selected_experts.device
+        selected_experts_cpu = selected_experts.cpu()
 
         # Loop over all available experts in the model and perform the computation on each expert
         for expert_idx in range(self.num_experts):
             expert_layer = self.experts[expert_idx]
-            idx, top_x = torch.where(expert_mask[expert_idx])
+            top_x_cpu, idx_cpu  = torch.where(selected_experts_cpu == expert_idx)
+            idx = idx_cpu.to(starting_device)
+            top_x = top_x_cpu.to(starting_device)
 
             # Index the correct hidden states and compute the expert hidden state for
             # the current expert. We need to make sure to multiply the output hidden
